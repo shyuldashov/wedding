@@ -1118,14 +1118,91 @@
         text-transform: uppercase;
         margin-top: 2px;
       }
-      .scroll-hint {
+      .scroll-cue {
         position: absolute;
-        bottom: 26px;
+        z-index: 2;
         left: 50%;
-        width: 1px;
-        height: 34px;
-        background: linear-gradient(var(--gold), transparent);
-        animation: blink 2s infinite;
+        bottom: max(18px, env(safe-area-inset-bottom));
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: var(--hero-sub);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 600;
+        padding: 8px 14px;
+        transition: opacity 0.5s;
+      }
+      .scroll-cue svg {
+        width: 34px;
+        height: 40px;
+        animation: cue 1.8s ease-in-out infinite;
+      }
+      .scroll-cue.gone {
+        opacity: 0;
+        pointer-events: none;
+      }
+      @keyframes cue {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(8px);
+        }
+      }
+      .invite.nudge {
+        animation: nudge 1.3s cubic-bezier(0.35, 0, 0.25, 1);
+      }
+      @keyframes nudge {
+        0%,
+        100% {
+          transform: none;
+        }
+        30% {
+          transform: translateY(-46px);
+        }
+        55% {
+          transform: translateY(0);
+        }
+        72% {
+          transform: translateY(-14px);
+        }
+      }
+      .ok-mark {
+        width: 74px;
+        height: 74px;
+        margin: 0 auto 14px;
+        display: block;
+      }
+      .ok-mark circle {
+        fill: none;
+        stroke: var(--gold);
+        stroke-width: 2;
+        stroke-dasharray: 190;
+        stroke-dashoffset: 190;
+        animation: draw 0.9s ease forwards;
+      }
+      .ok-mark path {
+        fill: none;
+        stroke: var(--gold);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 50;
+        stroke-dashoffset: 50;
+        animation: draw 0.5s ease 0.75s forwards;
+      }
+      @keyframes draw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      #done.show p {
+        animation: fadeUp 0.7s ease 0.9s both;
       }
 
       .divider {
@@ -1766,7 +1843,22 @@
           <p class="hero-date" data-i18n="date_full"></p>
           <p class="hero-day" data-i18n="weekday"></p>
         </div>
-        <span class="scroll-hint"></span>
+        <button class="scroll-cue" id="scrollCue" type="button">
+          <span data-i18n="scroll"></span>
+          <svg
+            viewBox="0 0 34 40"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M17 2v26" opacity=".75" />
+            <path d="M7 21l10 9 10-9" />
+            <path d="M11 29l6 5 6-5" opacity=".6" />
+          </svg>
+        </button>
       </header>
 
       <section class="paper-band" id="introSec">
@@ -1935,6 +2027,10 @@
               ></button>
             </form>
             <div id="done" hidden>
+              <svg class="ok-mark" viewBox="0 0 64 64" aria-hidden="true">
+                <circle cx="32" cy="32" r="29" />
+                <path d="M19 33l9 9 17-19" />
+              </svg>
               <p id="doneText"></p>
               <button
                 type="button"
@@ -1998,12 +2094,12 @@
           "https://script.google.com/macros/s/AKfycbyML5MNBoY0ekeRJD_mlqInBZDOFzQhboON7eMrqao4mk1GbuHEmG5ZU-YwSmbjI9oTzw/exec",
         maxGuests: 10,
       }
-      const LANG_THEME = { ru: "classic", crh: "oriental", uz: "samarkand" } // какой дизайн на каком языке
+      const LANG_THEME = { ru: "classic", crh: "oriental", uz: "samarkand" }
       const THEME_FX = {
         classic: "roses",
         oriental: "doves",
         samarkand: "bodom",
-      } // украшение после открытия
+      }
 
       /* ================= ТЕКСТЫ ================= */
       const I18N = {
@@ -2048,6 +2144,7 @@
           edit: "Изменить ответ",
           bye: "С любовью,",
           cal_title: "Свадьба",
+          scroll: "Листайте вниз",
           today_pre: "Сегодня наш день!",
           cd_today: "До начала торжества",
           today_now: "Праздник уже начался!",
@@ -2098,6 +2195,7 @@
           edit: "Cevapnı deñiştirmek",
           bye: "Sevgi ile,",
           cal_title: "Toy",
+          scroll: "Devamı aşağıda",
           today_pre: "Bugün bizim künümiz!",
           cd_today: "Toy başlağanına qadar",
           today_now: "Toy başladı!",
@@ -2148,6 +2246,7 @@
           edit: "Javobni o'zgartirish",
           bye: "Hurmat bilan,",
           cal_title: "To'y",
+          scroll: "Pastga suring",
           today_pre: "Bugun bizning kunimiz!",
           cd_today: "To'y boshlanishiga",
           today_now: "To'y boshlandi!",
@@ -2522,6 +2621,31 @@
         setTimeout(() => made.forEach((s) => s.remove()), 2600)
       }
       let opened = false
+      function startScrollCue() {
+        const cue = $("#scrollCue")
+        const scrolled = () => scrollY > 40
+        cue.onclick = () => {
+          const n = $("#introSec")
+          if (n) n.scrollIntoView({ behavior: "smooth" })
+        }
+        addEventListener(
+          "scroll",
+          () => {
+            if (scrolled()) cue.classList.add("gone")
+          },
+          { passive: true }
+        )
+        if (reduce) return
+        ;[4000, 11000].forEach((ms) =>
+          setTimeout(() => {
+            if (scrolled()) return
+            const inv = $("#invite")
+            inv.classList.remove("nudge")
+            void inv.offsetWidth
+            inv.classList.add("nudge")
+          }, ms)
+        )
+      }
       function revealInvite() {
         const sc = $("#scene")
         if (sc) sc.remove()
@@ -2529,6 +2653,7 @@
         window.scrollTo(0, 0)
         $("#invite").classList.add("show")
         $("#music").classList.add("show")
+        startScrollCue()
       }
       function openEnvelope() {
         if (opened) return
@@ -2727,7 +2852,7 @@
           applyLang(lang)
         }
         const started = now() >= target
-        // в день свадьбы после 17:00 — вместо цифр надпись «Праздник уже начался!»
+
         $("#cdNow").hidden = !(phase === "today" && started)
         $("#cdGrid").hidden = phase === "today" && started
         $("#cdTitle").hidden = phase === "today" && started
@@ -2735,7 +2860,7 @@
           $("#cdNow").textContent = t("today_now")
           return
         }
-        let s = Math.max(0, Math.floor(Math.abs(target - now()) / 1000)) // до свадьбы — обратный отсчёт, после — сколько вместе
+        let s = Math.max(0, Math.floor(Math.abs(target - now()) / 1000))
         let y = 0
         if (phase === "after") {
           y = Math.floor(s / 31556952)
@@ -2806,6 +2931,23 @@
         })
       )
 
+      function guestId() {
+        let id = null
+        try {
+          id = localStorage.getItem("guestId")
+        } catch (e) {}
+        if (!id) {
+          id = crypto.randomUUID
+            ? crypto.randomUUID()
+            : Date.now().toString(36) + Math.random().toString(36).slice(2)
+          try {
+            localStorage.setItem("guestId", id)
+          } catch (e) {}
+          window.__gid = window.__gid || id // если хранилище недоступно — хотя бы в пределах визита
+          id = window.__gid
+        }
+        return id
+      }
       async function sendRsvp(payload) {
         if (!CONFIG.scriptUrl) {
           await new Promise((r) => setTimeout(r, 700))
@@ -2846,6 +2988,7 @@
                   .filter(Boolean)
               : [],
           lang,
+          id: guestId(),
           hp: f.website.value,
         }
         btn.disabled = true
@@ -2855,6 +2998,17 @@
           f.hidden = true
           $("#done").hidden = false
           $("#doneText").textContent = t(att === "yes" ? "ok_yes" : "ok_no")
+          const done = $("#done")
+          done.classList.remove("show")
+          void done.offsetWidth
+          done.classList.add("show")
+          const mark = done.querySelector(".ok-mark")
+          mark.replaceWith(mark.cloneNode(true))
+          if (att === "yes" && !reduce)
+            setTimeout(
+              () => spawnFx(THEME_FX[document.documentElement.dataset.theme]),
+              700
+            )
         } catch (err) {
           msg.textContent = t("err_send")
         } finally {
